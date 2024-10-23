@@ -1,13 +1,14 @@
-from flask import request, jsonify
+from flask import request
 from flask_restful import Resource
 from config import app, db, api
 from models import Episode, Appearance, Guest
+
 # Route to get all episodes
 class EpisodeListResource(Resource):
     def get(self):
         episodes = Episode.query.all()
         episodes_list = [episode.to_dict() for episode in episodes]
-        return jsonify(episodes_list), 200
+        return episodes_list, 200  # No need for jsonify, Flask-RESTful handles it
 
 # Resource for fetching a single episode by ID
 class EpisodeResource(Resource):
@@ -15,7 +16,7 @@ class EpisodeResource(Resource):
         episode = Episode.query.filter(Episode.id == id).first()
 
         if episode is None:
-            return jsonify({"error": "Episode not found"}), 404
+            return {"error": "Episode not found"}, 404
 
         episode_data = {
             "id": episode.id,
@@ -33,11 +34,11 @@ class EpisodeResource(Resource):
                     },
                     "rating": appearance.rating
                 }
-                for appearance in episode.appearances
+                for appearance in episode.appearance
             ]
         }
 
-        return jsonify(episode_data), 200
+        return episode_data, 200
 
 # Resource for fetching all guests
 class GuestListResource(Resource):
@@ -51,7 +52,7 @@ class GuestListResource(Resource):
             }
             for guest in guests
         ]
-        return jsonify(guests_list), 200
+        return guests_list, 200
 
 # Resource for creating a new appearance
 class AppearanceResource(Resource):
@@ -62,17 +63,18 @@ class AppearanceResource(Resource):
         episode_id = data.get('episode_id')
         guest_id = data.get('guest_id')
 
-        if not rating or not (1 <= rating <= 5):
-            return jsonify({"errors": ["Rating must be between 1 and 5"]}), 400
+        # Validate inputs
+        if rating is None or not (1 <= rating <= 5):
+            return {"errors": ["Rating must be between 1 and 5"]}, 400
 
         if not episode_id or not guest_id:
-            return jsonify({"errors": ["Both episode_id and guest_id are required"]}), 400
+            return {"errors": ["Both episode_id and guest_id are required"]}, 400
 
         episode = Episode.query.get(episode_id)
         guest = Guest.query.get(guest_id)
 
         if not episode or not guest:
-            return jsonify({"errors": ["Episode or Guest not found"]}), 404
+            return {"errors": ["Episode or Guest not found"]}, 404
 
         new_appearance = Appearance(
             rating=rating,
@@ -100,7 +102,7 @@ class AppearanceResource(Resource):
                 "occupation": guest.occupation
             }
         }
-        return jsonify(response_data), 201
+        return response_data, 201
 
 # Adding resources to API
 api.add_resource(EpisodeListResource, '/episodes')
