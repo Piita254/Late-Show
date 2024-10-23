@@ -1,8 +1,7 @@
 from flask import request, jsonify
 from flask_restful import Resource
-
+from config import app, db, api
 from models import Episode, Appearance, Guest
-
 # Route to get all episodes
 class EpisodeListResource(Resource):
     def get(self):
