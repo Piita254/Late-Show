@@ -1,44 +1,55 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData
+from sqlalchemy.orm import validates
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_serializer import SerializerMixin
 
+from config import db, bcrypt
 
-metadata = MetaData()
+class Episode(db.Model,SerializerMixin):
+    _tablename_='episodes'
 
-db = SQLAlchemy(metadata=metadata) 
+    serialize_rules=('-appearance.episode',)
 
-class Episode(db.Model, SerializerMixin):
-    __tablename__ = 'episodes'
+    id= db.Column(db.Integer,primary_key=True)
+    date= db.Column(db.String)
+    number= db.Column(db.Integer)
 
-    serializer_rules = ('-appearances.episode',)
+    appearance =db.relationship('Appearance',back_populates='episode')
 
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.String)
-    number = db.Column(db.Integer)
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "date": self.date,
+            "number": self.number
+        }
 
-    appearances = db.relationship('Appearance', back_populates='episode')
+class Guest(db.Model,SerializerMixin):
 
-class Guest(db.Model, SerializerMixin):
-    __tablename__ = 'guests'
+    _tablename_='guests'
 
-    serializer_rules = ('-appearances.guest',)
+    serialize_rules=('-appearance.guest',)
 
-    id = db.Column(db.Integer, primary_key=True)  
-    name = db.Column(db.String)  
-    occupation = db.Column(db.String)  
+    id = db.Column(db.Integer,primary_key=True)
+    name = db.Column(db.String)
+    occupation= db.Column(db.String)
 
-    appearances = db.relationship('Appearance', back_populates='guest')
+    appearance=db.relationship('Appearance',back_populates='guest')
 
-class Appearance(db.Model, SerializerMixin):
-    __tablename__ = 'appearances'
+class Appearance(db.Model,SerializerMixin):
+    
+    _tablename_='appearances'
 
-    serializer_rules = ('-episode.appearances -guest.appearances')
+    serialize_rules=('-episode.appearance','-guest.appearance')
 
-    id = db.Column(db.Integer, primary_key=True)
-    rating = db.Column(db.Integer)
-    episode_id = db.Column(db.Integer, db.ForeignKey('episodes.id',ondelete='CASCADE'))
-    guest_id = db.Column(db.Integer, db.ForeignKey('guests.id',ondelete='CASCADE')) 
+    id= db.Column(db.Integer,primary_key=True)
+    rating=db.Column(db.Integer,nullable=False)
+    episode_id=db.Column(db.Integer,db.ForeignKey('episodes.id'),nullable=False)
+    guest_id=db.Column(db.Integer,db.ForeignKey('guests.id'),nullable=False)
 
-    episode = db.relationship('Episode', back_populates='appearances')  
-    guest = db.relationship('Guest', back_populates='appearances')  
+    episode=db.relationship('Episode',back_populates='appearance')
+    guest=db.relationship('Guest',back_populates='appearance')
+
+    @validates('rating')
+    def validate_rating(self, key, rating):
+        if not (1 <= rating <= 5):
+            raise ValueError('Rating must be between 1 and 5 (inclusive).')
+        return rating
